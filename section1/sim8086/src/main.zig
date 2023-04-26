@@ -53,7 +53,7 @@ fn log(log_type: LogType, message: []u8) void {
 
 pub fn main() anyerror!void {
     // @rewrite: should be relative
-    const file = try std.fs.cwd().openFile("instructions/input_many", .{});
+    const file = try std.fs.cwd().openFile("instructions/input", .{});
     defer file.close();
 
     var buffer: [100]u8 = undefined;
@@ -64,6 +64,7 @@ pub fn main() anyerror!void {
         std.debug.print("{d}", .{ @rem(instruction_arr.len, @intCast(usize, 2)) });
         return InputError.NonEvenInstructionSet;
     }
+    std.debug.print("{d}\n\n", .{buffer});
 
     // @dumb: in reality instructions will decide the length of the input
     while (i < instruction_arr.len) : (i += 2) {
@@ -82,7 +83,7 @@ pub fn main() anyerror!void {
                     std.debug.print("[ERR] mod not working", .{});
                     break;
                 }
-                
+
                 const source = get_register(w, if (d) reg else reg_mem);
                 const dest = get_register(w, if (d) reg_mem else reg);
                 // std.debug.print("D bit: {d}, w bit: {d}, args: {d} ,source: {s}, dest: {s}", .{ d, w, instruction, source, dest });
