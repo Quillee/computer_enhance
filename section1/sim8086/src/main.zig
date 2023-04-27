@@ -15,26 +15,26 @@ const LogType = enum {
 fn get_register(width: u8, register:  usize) @TypeOf("AX") {
     if (width == 1) {
         return switch(register) {
-            1 => "AX",
-            2 => "CX",
-            3 => "DX",
-            4 => "BX",
-            5 => "SP",
-            6 => "BP",
-            7 => "SI",
-            8 => "DI",
+            1 => "ax",
+            2 => "cx",
+            3 => "dx",
+            4 => "bx",
+            5 => "sp",
+            6 => "bp",
+            7 => "si",
+            8 => "di",
             else => unreachable
         };
     } else {
         return switch(register) {
-            1 => "AL",
-            2 => "CL",
-            3 => "DL",
-            4 => "BL",
-            5 => "SH",
-            6 => "BH",
-            7 => "SH",
-            8 => "DH",
+            1 => "al",
+            2 => "cl",
+            3 => "dl",
+            4 => "bl",
+            5 => "ah",
+            6 => "bh",
+            7 => "dh",
+            8 => "bh",
             else => unreachable
         };
     }
@@ -52,46 +52,32 @@ fn log(log_type: LogType, message: []u8) void {
 }
 
 pub fn main() anyerror!void {
-    // @rewrite: should be relative
     const file = try std.fs.cwd().openFile("instructions/input", .{});
     defer file.close();
 
-    var buffer: [100]u8 = undefined;
-    var i: usize = 0;
-    const bytes_read = try file.readAll(&buffer);
-    var instruction_arr = buffer[0..bytes_read];
-    if (@rem(instruction_arr.len, @intCast(usize, 2)) != 0) {
-        std.debug.print("{d}", .{ @rem(instruction_arr.len, @intCast(usize, 2)) });
-        return InputError.NonEvenInstructionSet;
-    }
-    std.debug.print("{d}\n\n", .{buffer});
+    var buffer_reader = file.reader();
+    var buffer = try buffer_reader.readBoundedBytes(2);
+    while (buffer.len > 0) {
+        var instr = [_]u8{ 0, 0, 0 };
+        std.debug.print("Foo: {b}, Baz: {b:>8}, Boo: {any}\n\n", .{ buffer.get(0) & 0xFC, buffer.get(0) & 0b111111_0_0, buffer });
+        std.mem.copy(u8, &instr, switch (buffer.get(0) & 0xFC) {
+            0b100001_00, 60 => "mov",
+            else => unreachable,
+        });
+        const d = (buffer.get(0) & 0x02) > 0;
+        const w = buffer.get(0) & 0x01;
 
-    // @dumb: in reality instructions will decide the length of the input
-    while (i < instruction_arr.len) : (i += 2) {
-        const instruction = buffer[i] & 0xFC;
-        switch (instruction) {
-            136 => {
-                const d = buffer[i] & 0x02 > 0;
-                const w = buffer[i] & 0x01;
-                // 11000000
-                const mod = buffer[i + 1] & 0xC0;
-                // 00111000
-                const reg = (buffer[i + 1] & 0x38) >> 3;
-                // 00000111
-                const reg_mem = buffer[i + 1] & 0x7;
-                if (mod == 3) {
-                    std.debug.print("[ERR] mod not working", .{});
-                    break;
-                }
+        // 11000000
+        // const mod = buffer[1] & 0xC0;
+        // 00111000
+        const reg = (buffer.get(1) & 0x38) >> 3;
+        // 00000111
+        const reg_mem = buffer.get(1) & 0x7;
 
-                const source = get_register(w, if (d) reg else reg_mem);
-                const dest = get_register(w, if (d) reg_mem else reg);
-                // std.debug.print("D bit: {d}, w bit: {d}, args: {d} ,source: {s}, dest: {s}", .{ d, w, instruction, source, dest });
-                std.debug.print("mov {s}, {s}\n", .{ source, dest });
-            },
-            else => std.debug.print("Unknown instruction {d}\n", .{ instruction })
-        }
+        const source = get_register(w, if (d) reg else reg_mem);
+        const dest = get_register(w, if (d) reg_mem else reg);
+        std.debug.print("{s} {s}, {s}\n", .{ instr, source, dest });
+        buffer = try buffer_reader.readBoundedBytes(2);
     }
-    // std.debug.print("File contents {s}\n", .{ instruction_arr });
 }
 
